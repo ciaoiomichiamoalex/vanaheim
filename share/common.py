@@ -2,11 +2,11 @@ import json
 import logging
 
 
-def decode_json(json_in: str, *json_obj: str) -> list | None:
-    with open(json_in, 'r') as jin:
+def decode_json(json_fin: str, key: str, value: str) -> list | None:
+    with open(json_fin, 'r') as jin:
         res = list(json.load(jin))
 
-    res = [obj for obj in res if obj[json_obj[0]] == json_obj[1]]
+    res = [obj for obj in res if obj[key] == value]
     return res if res else None
 
 
