@@ -30,10 +30,11 @@ QUERY_SUMMARY_VIAGGI = """
             data_consegna, 
             sede_consegna
         FROM vanaheim.consegne
-        WHERE EXTRACT(YEAR FROM data_documento) = 2024
+        WHERE EXTRACT(YEAR FROM data_documento) = ?
     ) 
     SELECT v1.data_consegna data_es745wh,
         v1.sede_consegna sede_es745wh,
+        NULL gap,
         v2.sede_consegna sede_fc065zw,
         v2.data_consegna data_fc065zw
     FROM (
@@ -55,6 +56,7 @@ QUERY_SUMMARY_VIAGGI = """
 
 DEFAULT_FONT = 'Arial'
 FORMATS = {
+    type(None): 'General',
     str: '@',
     int: '#,##0',
     date: 'dd/mm',
@@ -63,7 +65,7 @@ FORMATS = {
 
 
 def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) -> None:
-    """Generate the overview excel by taking data from the database.
+    """Generate the month overview excel by taking data from the database.
 
     :param int anno: The desired year for the overview.
     :param int mese: The desired month for the overview.
@@ -103,16 +105,37 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
         wsl.cell(row=row_num, column=1).number_format = FORMATS[date]
     # TODO: remove extra days (31/06, 30/02, ...)
 
-    logger.info('saving overview for {0}... [{0}.xlsx]'.format(f'{anno}_{mese:0>2}'))
+    logger.info('saving overview for %(data)s... [%(data)s.xlsx]' % {'data': f'{anno}_{mese:0>2}'})
     wb.save(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx')
     cursor.close()
 
 
 def summary_viaggi(anno: int = date.today().year) -> None:
-    # TODO: save summary of travels (data_consegna, sede_consegna)
-    pass
+    """Generate the year trips summary excel by taking data from the database.
+
+    :param int anno: The desired year for the summary.
+    """
+    logger = logger_ini(PATH_LOG, 'overview_doc')
+    cursor = sqlmng.conx_ini()
+
+    viaggi = sqlmng.conx_read(cursor, QUERY_SUMMARY_VIAGGI, [anno]).fetchall()
+    if not viaggi:
+        logger.warning(f'no record founded in {anno}... skipping summary!')
+        return
+
+    wb = openpyxl.load_workbook(f'{PATH_SCHEME}/viaggi.xlsx')
+    ws = wb['viaggi']
+    for row_num, row in enumerate(viaggi, start=3):
+        for col_num, col in enumerate(row, start=1):
+            ws.cell(row=row_num, column=col_num).value = col
+            ws.cell(row=row_num, column=col_num).font = Font(name=DEFAULT_FONT)
+            ws.cell(row=row_num, column=col_num).number_format = FORMATS[type(col)]
+
+    logger.info('saving summary for %(anno)d... [%(anno)d_TRIPS.xlsx]' % {'anno': anno})
+    wb.save(f'{PATH_RES}/{anno}_TRIPS.xlsx')
+    cursor.close()
 
 
 if __name__ == '__main__':
-    # TODO: make mese optional in overview_gnr()
     overview_gnr()
+    summary_viaggi()
