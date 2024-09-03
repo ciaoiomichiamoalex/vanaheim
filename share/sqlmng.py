@@ -5,12 +5,12 @@ PATH_PRJ = 'c:/source/vanaheim'
 PATH_CFG = f'{PATH_PRJ}/config/sqlmng.json'
 
 
-def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Cursor:
+def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> tuple[pyodbc.Cursor, pyodbc.Connection]:
     """Read from config/sqlmng.json the database configuration and start the connection.
 
     :param str conn_name: Refers to the database configuration name in sqlmng.json, defaults to 'main'.
     :param bool save_changes: Enables or disables the auto-commit, defaults to False.
-    :return: A new cursor.
+    :return: A tuple with the cursor and the reference to connection.
     """
     config = decode_json(PATH_CFG, 'name', conn_name)
     if not config:
@@ -25,7 +25,7 @@ def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Curs
         password=config[0]['password'],
         autocommit=save_changes
     )
-    return conx.cursor()
+    return conx.cursor(), conx
 
 
 def conx_read(cursor: pyodbc.Cursor, query: str, args: list | set | tuple = None) -> pyodbc.Cursor:
