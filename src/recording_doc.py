@@ -96,6 +96,10 @@ PATTERN_MESSAGE_GAPS = {
     'genere': 'GAP',
     'testo': 'Found gap for doc number {numero_documento} of year {anno}'
 }
+PATTERN_MESSAGE_SIMILARITY_CRASH = {
+    'genere': 'WARNING',
+    'testo': 'Had similarity crash for {targa} on page {page} of doc {doc}'
+}
 
 
 def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime.now()) -> tuple[int, int]:
@@ -184,6 +188,13 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
         if search:
             targa = search.group(1).upper()
             doc_info['targa'] = targa if targa in ENUM_TARGA else check_targa(targa)
+
+            if doc_info['targa'] not in ENUM_TARGA and sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_SIMILARITY_CRASH['genere'], PATTERN_MESSAGE_SIMILARITY_CRASH['testo'].format(
+                targa=doc_info['targa'],
+                page=working_page,
+                doc=working_doc.replace('.recording', '').split('/')[-1]
+            ))) != 1:
+                logger.error('error on saving similarity crash message record...')
         else:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
@@ -318,7 +329,5 @@ if __name__ == '__main__':
     overviews = sqlmng.conx_read(cursor, QUERY_OVERVIEW_DATE, [job_start]).fetchall()
     for row in overviews:
         overview_gnr(row.anno, row.mese)
-
-    # TODO: check wrong targhe
 
     cursor.close()
