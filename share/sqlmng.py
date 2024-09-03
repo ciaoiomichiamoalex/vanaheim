@@ -11,12 +11,12 @@ def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Curs
         raise ValueError(f'conx_ini: no config {conn_name} founded!')
 
     conx = pyodbc.connect(
-        driver=f"{{{config['driver']}}}",
-        server=config['server'],
-        port=config['port'],
-        database=config['database'],
-        user=config['user'],
-        password=config['password'],
+        driver=f"{{{config[0]['driver']}}}",
+        server=config[0]['server'],
+        port=config[0]['port'],
+        database=config[0]['database'],
+        user=config[0]['user'],
+        password=config[0]['password'],
         autocommit=save_changes
     )
     return conx.cursor()
