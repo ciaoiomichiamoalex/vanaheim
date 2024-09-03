@@ -32,3 +32,79 @@ CREATE TABLE vanaheim.messaggi (
 );
 
 CREATE INDEX messaggi_testo_idx ON vanaheim.messaggi (testo);
+
+CREATE OR REPLACE VIEW vanaheim.messaggi_discard_vw AS
+SELECT NULLIF(SUBSTRING(
+        testo,
+        STRPOS(testo, '[numero: ') + LENGTH('[numero: '),
+        STRPOS(testo, ', genere: ') - (STRPOS(testo, '[numero: ') + LENGTH('[numero: '))
+    ), 'None')::INTEGER numero_documento,
+    NULLIF(SUBSTRING(
+        testo,
+        STRPOS(testo, ', genere: ') + LENGTH(', genere: '),
+        STRPOS(testo, ', data: ') - (STRPOS(testo, ', genere: ') + LENGTH(', genere: '))
+    ), 'None') genere_documento,
+    NULLIF(SUBSTRING(
+        testo,
+        STRPOS(testo, ', data: ') + LENGTH(', data: '),
+        STRPOS(testo, ']') - (STRPOS(testo, ', data: ') + LENGTH(', data: '))
+    ), 'None')::DATE data_documento,
+    SUBSTRING(
+        testo,
+        STRPOS(testo, 'for error on ') + LENGTH('for error on '),
+        STRPOS(testo, '[numero: ') - (STRPOS(testo, 'for error on ') + LENGTH('for error on '))
+    ) errore,
+    SUBSTRING(
+        testo,
+        STRPOS(testo, 'of doc ') + LENGTH('of doc '),
+        STRPOS(testo, ' discarded') - (STRPOS(testo, 'of doc ') + LENGTH('of doc '))
+    ) sorgente,
+    SUBSTRING(
+        testo,
+        STRPOS(testo, 'Page ') + LENGTH('Page '),
+        STRPOS(testo, ' of doc ') - (STRPOS(testo, 'Page ') + LENGTH('Page '))
+    )::INTEGER pagina
+FROM vanaheim.messaggi
+WHERE genere = 'DISCARD';
+
+CREATE OR REPLACE VIEW vanaheim.messaggi_gap_vw AS
+SELECT id,
+    SUBSTRING(
+        testo,
+        STRPOS(testo, 'doc number ') + LENGTH('doc number '),
+        STRPOS(testo, ' of year ') - (STRPOS(testo, 'doc number ') + LENGTH('doc number '))
+    )::INTEGER numero_documento,
+    SUBSTRING(
+        testo,
+        STRPOS(testo, ' of year ') + LENGTH(' of year '),
+        LENGTH(testo)
+    )::INTEGER anno
+FROM vanaheim.messaggi
+WHERE genere = 'GAP';
+
+CREATE OR REPLACE VIEW vanaheim.consegne_gap_vw AS
+WITH doc_nums AS (
+    SELECT dn.anno, s.numero
+    FROM (
+        SELECT EXTRACT(YEAR FROM data_documento) anno,
+            MIN(numero_documento) min_num,
+            MAX(numero_documento) max_num
+        FROM vanaheim.consegne
+        GROUP BY EXTRACT(YEAR FROM data_documento)
+    ) dn,
+        GENERATE_SERIES(dn.min_num, dn.max_num, 1) s(numero)
+)
+SELECT d.numero,
+    d.anno,
+    CASE
+        WHEN m.numero_documento IS NOT NULL THEN TRUE
+        ELSE FALSE
+    END discarded
+FROM doc_nums d
+    LEFT JOIN vanaheim.consegne c
+        ON d.numero = c.numero_documento
+        AND d.anno = EXTRACT(YEAR FROM c.data_documento)
+    LEFT JOIN vanaheim.messaggi_discard_vw m
+        ON d.numero = m.numero_documento
+        AND d.anno = EXTRACT(YEAR FROM m.data_documento)
+WHERE c.numero_documento IS NULL;
