@@ -1,6 +1,6 @@
 from calendar import Calendar
 from datetime import date
-from openpyxl.styles import Font
+from openpyxl.styles import Alignment, Font
 from share import sqlmng
 from share.common import logger_ini
 import openpyxl
@@ -130,6 +130,9 @@ def summary_viaggi(anno: int = date.today().year) -> None:
             ws.cell(row=row_num, column=col_num).value = col
             ws.cell(row=row_num, column=col_num).font = Font(name=DEFAULT_FONT)
             ws.cell(row=row_num, column=col_num).number_format = FORMATS[type(col)]
+
+            if col_num == 4:
+                ws.cell(row=row_num, column=col_num).alignment = Alignment(horizontal='right')
 
     logger.info('saving summary for %(anno)d... [%(anno)d_TRIPS.xlsx]' % {'anno': anno})
     wb.save(f'{PATH_RES}/{anno}_TRIPS.xlsx')
