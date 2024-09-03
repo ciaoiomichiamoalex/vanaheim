@@ -319,4 +319,6 @@ if __name__ == '__main__':
     for row in overviews:
         overview_gnr(row.anno, row.mese)
 
+    # TODO: check wrong targhe
+
     cursor.close()
