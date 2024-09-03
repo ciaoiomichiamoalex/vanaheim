@@ -72,7 +72,7 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
     :param int mese: The desired month for the overview.
     """
     logger = logger_ini(PATH_LOG, 'overview_doc')
-    cursor = sqlmng.conx_ini()
+    cursor, conn = sqlmng.conx_ini()
 
     consegne = sqlmng.conx_read(cursor, QUERY_OVERVIEW_DATA, (anno, mese)).fetchall()
     if not consegne:
@@ -103,11 +103,11 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
             ws.cell(row=row_num, column=1).value = day
             ws.cell(row=row_num, column=1).font = Font(name=DEFAULT_FONT)
             ws.cell(row=row_num, column=1).number_format = FORMATS[date]
-        # TODO: remove extra days (31/06, 30/02, ...) => openpyxl non aggiorna le formule
 
     logger.info('saving overview for %(data)s... [%(data)s.xlsx]' % {'data': f'{anno}_{mese:0>2}'})
     wb.save(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx')
     cursor.close()
+    conn.close()
 
 
 def summary_viaggi(anno: int = date.today().year) -> None:
@@ -116,7 +116,7 @@ def summary_viaggi(anno: int = date.today().year) -> None:
     :param int anno: The desired year for the summary.
     """
     logger = logger_ini(PATH_LOG, 'overview_doc')
-    cursor = sqlmng.conx_ini()
+    cursor, conn = sqlmng.conx_ini()
 
     viaggi = sqlmng.conx_read(cursor, QUERY_SUMMARY_VIAGGI, [anno]).fetchall()
     if not viaggi:
@@ -137,6 +137,7 @@ def summary_viaggi(anno: int = date.today().year) -> None:
     logger.info('saving summary for %(anno)d... [%(anno)d_TRIPS.xlsx]' % {'anno': anno})
     wb.save(f'{PATH_RES}/{anno}_TRIPS.xlsx')
     cursor.close()
+    conn.close()
 
 
 if __name__ == '__main__':
