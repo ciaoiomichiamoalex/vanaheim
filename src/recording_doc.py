@@ -3,7 +3,7 @@ from difflib import SequenceMatcher
 from pyodbc import Cursor
 from share import sqlmng
 from share.common import logger_ini
-from src.overview_doc import overview_gnr
+from overview_doc import overview_gnr
 import os
 import pypdfium2
 import re
@@ -291,6 +291,7 @@ def doc_scanner(working_doc: str, cursor: Cursor, recording_begin: datetime = da
                         })) != 1:
                             logger.error('error on saving discard message record...')
                         continue
+                    # salvo record di scarto in vanaheim.consegne
                     elif sqlmng.conx_write(cursor, QUERY_INSERT_CONSEGNE, (
                         *chk_discard[:-1],
                         working_doc_name,
@@ -364,6 +365,7 @@ def doc_scanner(working_doc: str, cursor: Cursor, recording_begin: datetime = da
             })) != 1:
                 logger.error('error on saving discard message record...')
             continue
+        # salvo record in vanaheim.consegne
         elif sqlmng.conx_write(cursor, QUERY_INSERT_CONSEGNE, [value for value in doc_info.values()]) != 1:
             discarded_pages['number'] += 1
             discarded_doc = discard_doc(working_doc, working_page)
