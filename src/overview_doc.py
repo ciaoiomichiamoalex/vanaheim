@@ -8,7 +8,7 @@ import openpyxl
 PATH_PRJ = 'c:/source/vanaheim'
 PATH_LOG = f"{PATH_PRJ}/log/vanaheim_{date.today().strftime('%Y_%m_%d')}.log"
 PATH_RES = f'{PATH_PRJ}/res'
-PATH_SCHEME = f'{PATH_PRJ}/scheme/consegne.xlsx'
+PATH_SCHEME = f'{PATH_PRJ}/scheme'
 
 QUERY_OVERVIEW_DATA = """
     SELECT numero_documento,
@@ -22,6 +22,13 @@ QUERY_OVERVIEW_DATA = """
     WHERE EXTRACT(YEAR FROM data_consegna) = ?
         AND EXTRACT(MONTH FROM data_consegna) = ?
     ORDER BY numero_documento;
+"""
+QUERY_TRAVELS_SUMMARY = """
+    SELECT data_consegna, sede_consegna 
+    FROM vanaheim.consegne
+    WHERE EXTRACT(YEAR FROM data_consegna) = ?
+        AND targa = ?
+    ORDER BY data_consegna, sede_consegna;
 """
 
 
@@ -39,9 +46,10 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
         logger.warning(f'no record founded in {anno}/{mese:0>2}... skipping overview!')
         return
 
-    wb = openpyxl.load_workbook(PATH_SCHEME)
+    wb = openpyxl.load_workbook(f'{PATH_SCHEME}/consegne.xlsx')
     ws = wb['consegne']
     for row_num, row in enumerate(consegne.fetchall(), start=2):
+        # FIXME: make for in for, remove hard code
         ws.cell(row=row_num, column=1).value = row.numero_documento
         ws.cell(row=row_num, column=1).font = Font(name='Arial')
         ws.cell(row=row_num, column=1).number_format = '0'
@@ -56,7 +64,7 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
 
         ws.cell(row=row_num, column=4).value = row.sede_consegna
         ws.cell(row=row_num, column=4).font = Font(name='Arial')
-        ws.cell(row=row_num, column=4).number_format = ' @'
+        ws.cell(row=row_num, column=4).number_format = '@'
 
         ws.cell(row=row_num, column=5).value = row.quantita
         ws.cell(row=row_num, column=5).font = Font(name='Arial')
@@ -80,9 +88,16 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
         wsl.cell(row=row_num, column=1).value = day
         wsl.cell(row=row_num, column=1).font = Font(name='Arial')
         wsl.cell(row=row_num, column=1).number_format = 'dd/mm'
+    # TODO: remove extra days (31/06, 30/02, ...)
 
-    logger.info(f'saving overview for {anno}/{mese:0>2}... [{PATH_RES}/{anno}_{mese:0>2}.xlsx]')
+    logger.info('saving overview for {0}... [{0}.xlsx]'.format(f'{anno}_{mese:0>2}'))
     wb.save(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx')
+    cursor.close()
+
+
+def travels_summary(anno: int = date.today().year) -> None:
+    # TODO: save summary of travels (data_consegna, sede_consegna)
+    pass
 
 
 if __name__ == '__main__':
