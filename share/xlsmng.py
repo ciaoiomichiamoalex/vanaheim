@@ -4,6 +4,7 @@ import openpyxl
 
 DEFAULT_FONT = 'Aptos Narrow'
 FORMATS = {
+    type(None): 'General',
     str: '@',
     int: '#,##0',
     float: '#,##0.00',
