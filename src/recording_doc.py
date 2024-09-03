@@ -327,6 +327,7 @@ def doc_scanner(working_doc: str, cursor: Cursor, recording_begin: datetime = da
                 else:
                     doc_info['sorgente'] = discarded_doc_name
                     doc_info['id_messaggio'] = cursor.fetchone()[0]
+                    logger.info(doc_info)
 
                     if sqlmng.conx_write(cursor, QUERY_INSERT_DISCARD_CONSEGNE, [value for value in doc_info.values()]) != 1:
                         logger.error(f'error on saving discard_consegne record... [message id: {doc_info['id_messaggio']}]')
