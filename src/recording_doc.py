@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from share import sqlmng
 from share.common import logger_ini
 import os
@@ -6,7 +6,7 @@ import pypdfium2
 import re
 
 PATH_PRJ = 'c:/source/vanaheim'
-PATH_LOG = f"{PATH_PRJ}/log/vanaheim_{date.strftime('%Y_%m_%d')}.log"
+PATH_LOG = f"{PATH_PRJ}/log/vanaheim_{date.today().strftime('%Y_%m_%d')}.log"
 PATH_WORKING_DIR = f'{PATH_PRJ}/DDTs'
 PATH_DISCARDED = f'{PATH_WORKING_DIR}/discarded'
 PATH_RECORDED = f'{PATH_WORKING_DIR}/recorded'
@@ -20,18 +20,18 @@ PATTERN_TARGA = r'Peso soggetto accisa\r\n([\w\d]{7})\r\n'
 
 QUERY_CHK_DUPLICATE = """
     SELECT COUNT(*)
-    FROM consegne
+    FROM vanaheim.consegne
     WHERE (
         sorgente = ?
         AND pagina = ?
     ) OR (
         numero_documento = ?
         AND genere_documento = ?
-        AND YEAR(data_documento) = YEAR(?)
+        AND EXTRACT(YEAR FROM data_documento) = ?
     );
 """
 QUERY_INSERT = """
-    INSERT INTO consegne (
+    INSERT INTO vanaheim.consegne (
         numero_documento,
         genere_documento,
         data_documento,
@@ -58,8 +58,8 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
         search = re.search(PATTERN_NUMERO_DATA, text)
         if search:
             doc_info['numero_documento'] = int(search.group(1).replace('.', ''))
-            doc_info['genere_documento'] = search.group(1)
-            doc_info['data_documento'] = search.group(2)[6:] + '-' + search.group(2)[3:5] + '-' + search.group(2)[0:2]
+            doc_info['genere_documento'] = search.group(2)
+            doc_info['data_documento'] = datetime.strptime(search.group(3)[6:] + '-' + search.group(3)[3:5] + '-' + search.group(3)[0:2], '%Y-%m-%d').date()
         else:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
@@ -106,7 +106,7 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
             # TODO: save message on DB
             continue
 
-        doc_info['sorgente'] = working_doc.replace('.recording', '')
+        doc_info['sorgente'] = working_doc.replace('.recording', '').split('/')[-1]
         doc_info['pagina'] = working_page
         logger.debug(doc_info)
 
@@ -116,7 +116,7 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
             doc_info['pagina'],
             doc_info['numero_documento'],
             doc_info['genere_documento'],
-            doc_info['data_documento']
+            doc_info['data_documento'].year
         )).fetchone()[0]
 
         if chk_dup != 0:
@@ -125,7 +125,7 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
             logger.warning(f'discarding page {working_page} of {working_doc} because already recorded... [{discarded_doc}]')
             # TODO: save message on DB
             continue
-        elif sqlmng.conx_write(cursor, QUERY_INSERT, doc_info) != 1:
+        elif sqlmng.conx_write(cursor, QUERY_INSERT, [value for value in doc_info.values()]) != 1:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
             logger.error(f'discarding page {working_page} of {working_doc} for error on saving record... [{discarded_doc}]')
@@ -147,7 +147,7 @@ def discard_doc(working_doc: str, working_page: int) -> str:
 
 if __name__ == '__main__':
     logger = logger_ini(PATH_LOG)
-    docs = next(os.walk(PATH_WORKING_DIR), (None, None, []))[2]
+    docs = sorted(next(os.walk(PATH_WORKING_DIR), (None, None, []))[2])
 
     logger.info(f'DDTs dir content {docs}')
     for doc in docs:
@@ -159,7 +159,7 @@ if __name__ == '__main__':
         logger.info(f'working on doc {doc}...')
         os.rename(f'{PATH_WORKING_DIR}/{doc}', f'{PATH_WORKING_DIR}/{working_doc}')
 
-        worked_pages, discarded_pages = doc_scanner(working_doc)
+        worked_pages, discarded_pages = doc_scanner(f'{PATH_WORKING_DIR}/{working_doc}')
 
         logger.info(f'worked {worked_pages} pages on {doc} [{discarded_pages} discarded pages]')
         os.rename(f'{PATH_WORKING_DIR}/{working_doc}', f'{PATH_RECORDED}/{doc}.recorded')
