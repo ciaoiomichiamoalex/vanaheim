@@ -1,12 +1,12 @@
 from share.common import decode_json
 import pyodbc
 
-PRJ_PATH = 'c:/source/vanaheim'
-CFG_PATH = f'{PRJ_PATH}/config/sqlmng.json'
+PATH_PRJ = 'c:/source/vanaheim'
+PATH_CFG = f'{PATH_PRJ}/config/sqlmng.json'
 
 
 def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Cursor:
-    config = decode_json(CFG_PATH, 'name', conn_name)
+    config = decode_json(PATH_CFG, 'name', conn_name)
     if not config:
         raise ValueError(f'conx_ini: no config {conn_name} founded!')
 
