@@ -70,8 +70,7 @@ QUERY_CHK_RECORD_GAP = """
     SELECT id
     FROM vanaheim.messaggi_gap_vw
     WHERE numero_documento = ?
-        AND anno = ?
-        AND stato IS TRUE;
+        AND anno = ?;
 """
 QUERY_UPDATE_MESSAGGI = """
     UPDATE vanaheim.messaggi
@@ -82,7 +81,7 @@ QUERY_OVERVIEW_DATE = """
     SELECT DISTINCT EXTRACT(YEAR FROM data_documento)::INT anno, 
         EXTRACT(MONTH FROM data_documento)::INT mese
     FROM vanaheim.consegne 
-    WHERE data_registrazione = ?
+    WHERE data_registrazione::DATE = ?::DATE
     ORDER BY 1, 2;
 """
 QUERY_INSERT_DISCARD_CONSEGNE = """
@@ -97,7 +96,7 @@ QUERY_INSERT_DISCARD_CONSEGNE = """
         targa,
         sorgente,
         id_messaggio 
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 QUERY_CHK_DISCARD_CONSEGNE = """
     SELECT numero_documento,
