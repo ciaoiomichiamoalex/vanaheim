@@ -442,7 +442,7 @@ if __name__ == '__main__':
     logger.info(f'DDTs dir content {docs}')
 
     recording_begin = datetime.now()
-    cursor = sqlmng.conx_ini(save_changes=True)
+    cursor, conn = sqlmng.conx_ini(save_changes=True)
     # doc: un singolo doc dell'elenco (es. 2024_01_DDT_0001_0267.pdf)
     for doc in docs:
         if not re.search(PATTERN_WORKING_DOC, doc):
@@ -476,3 +476,4 @@ if __name__ == '__main__':
         overview_gnr(row.anno, row.mese)
 
     cursor.close()
+    conn.close()
