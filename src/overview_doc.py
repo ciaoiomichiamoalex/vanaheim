@@ -95,7 +95,7 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
     ]
 
     for ws in sheets:
-        ws.cell(row=1, column=1).value = date.today().year
+        ws.cell(row=1, column=1).value = anno
         ws.cell(row=1, column=1).font = Font(name=DEFAULT_FONT)
         ws.cell(row=1, column=1).number_format = FORMATS['number']
 
