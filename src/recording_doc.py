@@ -1,9 +1,9 @@
-import logging
 from datetime import date, datetime
 from difflib import SequenceMatcher
 from pyodbc import Cursor
 from share import sqlmng
 from share.common import logger_ini
+from src.overview_doc import overview_gnr
 import os
 import pypdfium2
 import re
@@ -55,7 +55,8 @@ QUERY_INSERT_MESSAGGI = """
     ) VALUES (?, ?);
 """
 QUERY_CHK_GAPS = """
-    SELECT cg.numero, cg.anno 
+    SELECT cg.numero, 
+        cg.anno 
     FROM vanaheim.consegne_gap_vw cg 
         LEFT JOIN vanaheim.messaggi_gap_vw mg 
             ON cg.numero = mg.numero_documento 
@@ -75,6 +76,12 @@ QUERY_UPDATE_MESSAGGI = """
     SET stato = FALSE
     WHERE id = ?;
 """
+QUERY_OVERVIEW_DATE = """
+    SELECT DISTINCT EXTRACT(YEAR FROM data_documento)::INT anno, EXTRACT(MONTH FROM data_documento)::INT mese
+    FROM vanaheim.consegne 
+    WHERE data_registrazione::DATE = ?::DATE
+    ORDER BY 1, 2;
+"""
 
 ENUM_TARGA = [
     'ES745WH',
@@ -92,7 +99,7 @@ PATTERN_MESSAGE_GAPS = {
 
 
 def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime.now()) -> tuple[int, int]:
-    logger = logger_ini(PATH_LOG, __name__)
+    logger = logger_ini(PATH_LOG, 'recording_doc')
     doc = pypdfium2.PdfDocument(working_doc)
     page_numbers = len(doc)
     discarded_pages = 0
@@ -232,7 +239,7 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             doc_info['data_documento'].year
         )).fetchone()[0]
         if chk_gap and sqlmng.conx_write(cursor, QUERY_UPDATE_MESSAGGI, chk_gap) != 1:
-            logging.error(f'error on update message status... [message id: {chk_gap}]')
+            logger.error(f'error on update message status... [message id: {chk_gap}]')
 
     doc.close()
     return page_numbers, discarded_pages
@@ -251,7 +258,7 @@ def discard_doc(working_doc: str, working_page: int) -> str:
 
 
 def check_targa(doc_targa: str) -> str:
-    logger = logger_ini(PATH_LOG, __name__)
+    logger = logger_ini(PATH_LOG, 'recording_doc')
     logger.info(f'checking similarity for {doc_targa}...')
 
     enum = dict.fromkeys(ENUM_TARGA, 0.0)
@@ -263,7 +270,7 @@ def check_targa(doc_targa: str) -> str:
 
 
 if __name__ == '__main__':
-    logger = logger_ini(PATH_LOG, __name__)
+    logger = logger_ini(PATH_LOG, 'recording_doc')
     docs = sorted(next(os.walk(PATH_WORKING_DIR), (None, None, []))[2])
 
     logger.info(f'DDTs dir content {docs}')
@@ -290,5 +297,9 @@ if __name__ == '__main__':
             anno=row.anno
         )]) != 1:
             logger.error('error on saving gap message record...')
+
+    overviews = sqlmng.conx_read(cursor, QUERY_OVERVIEW_DATE, job_start).fetchall()
+    for row in overviews:
+        overview_gnr(row.anno, row.mese)
 
     cursor.close()
