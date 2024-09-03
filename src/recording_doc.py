@@ -48,6 +48,7 @@ QUERY_INSERT = """
 
 def doc_scanner(working_doc: str) -> tuple[int, int]:
     doc = pypdfium2.PdfDocument(working_doc)
+    page_numbers = len(doc)
     discarded_pages = 0
 
     for working_page, page in enumerate(doc, start=1):
@@ -63,7 +64,7 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
         else:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
-            logger.warning(f'discarding page {working_page} of {working_doc} for error on PATTERN_NUMERO_DATA... [{discarded_doc}]')
+            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_NUMERO_DATA... [{discarded_doc.split('/')[-1]}]")
             # TODO: save message on DB
             continue
 
@@ -80,7 +81,7 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
             else:
                 discarded_pages += 1
                 discarded_doc = discard_doc(working_doc, working_page)
-                logger.warning(f'discarding page {working_page} of {working_doc} for error on PATTERN_SEDE... [{discarded_doc}]')
+                logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_SEDE... [{discarded_doc.split('/')[-1]}]")
                 # TODO: save message on DB
                 continue
 
@@ -90,7 +91,7 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
         else:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
-            logger.warning(f'discarding page {working_page} of {working_doc} for error on PATTERN_QUANTITA... [{discarded_doc}]')
+            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_QUANTITA... [{discarded_doc.split('/')[-1]}]")
             # TODO: save message on DB
             continue
 
@@ -102,7 +103,7 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
         else:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
-            logger.warning(f'discarding page {working_page} of {working_doc} for error on PATTERN_TARGA... [{discarded_doc}]')
+            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_TARGA... [{discarded_doc.split('/')[-1]}]")
             # TODO: save message on DB
             continue
 
@@ -122,26 +123,29 @@ def doc_scanner(working_doc: str) -> tuple[int, int]:
         if chk_dup != 0:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
-            logger.warning(f'discarding page {working_page} of {working_doc} because already recorded... [{discarded_doc}]')
+            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} because already recorded... [{discarded_doc.split('/')[-1]}]")
             # TODO: save message on DB
             continue
         elif sqlmng.conx_write(cursor, QUERY_INSERT, [value for value in doc_info.values()]) != 1:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
-            logger.error(f'discarding page {working_page} of {working_doc} for error on saving record... [{discarded_doc}]')
+            logger.error(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on saving record... [{discarded_doc.split('/')[-1]}]")
             # TODO: save message on DB
             continue
 
-    return len(doc), discarded_pages
+    doc.close()
+    return page_numbers, discarded_pages
 
 
 def discard_doc(working_doc: str, working_page: int) -> str:
     doc = pypdfium2.PdfDocument(working_doc)
-    discard = pypdfium2.PdfDocument().new()
+    discard = pypdfium2.PdfDocument.new()
 
     discard.import_pages(doc, [working_page - 1])
     discard_doc_name = f"{working_doc.split('.')[0]}_P{working_page:0>3}.pdf"
-    discard.save(f'{PATH_DISCARDED}/{discard_doc_name}')
+    discard.save(f"{PATH_DISCARDED}/{discard_doc_name.split('/')[-1]}")
+
+    doc.close()
     return discard_doc_name
 
 
