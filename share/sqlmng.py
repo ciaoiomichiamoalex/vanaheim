@@ -14,7 +14,7 @@ def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Curs
     """
     config = decode_json(PATH_CFG, 'name', conn_name)
     if not config:
-        raise ValueError(f'conx_ini: no config {conn_name} founded!')
+        raise ValueError(f'conx_ini: no config {conn_name} found!')
 
     conx = pyodbc.connect(
         driver=f"{{{config[0]['driver']}}}",
