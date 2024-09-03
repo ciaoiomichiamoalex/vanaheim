@@ -237,8 +237,8 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
         chk_gap = sqlmng.conx_read(cursor, QUERY_CHK_RECORD_GAP, (
             doc_info['numero_documento'],
             doc_info['data_documento'].year
-        )).fetchone()[0]
-        if chk_gap and sqlmng.conx_write(cursor, QUERY_UPDATE_MESSAGGI, chk_gap) != 1:
+        )).fetchone()
+        if chk_gap and sqlmng.conx_write(cursor, QUERY_UPDATE_MESSAGGI, chk_gap[0]) != 1:
             logger.error(f'error on update message status... [message id: {chk_gap}]')
 
     doc.close()
