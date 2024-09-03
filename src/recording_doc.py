@@ -260,18 +260,19 @@ def doc_scanner(working_doc: str, cursor: Cursor, recording_begin: datetime = da
 
         # controllo se page è in errore
         if discarded_pages['is_discarded']:
-            chk_discard = sqlmng.conx_read(cursor, QUERY_CHK_DISCARD_CONSEGNE, [re.sub(r'(_P\d{3}){2,}\.pdf$', re.findall(r'_P\d{3}', working_doc_name)[0], working_doc_name)]).fetchone()
+            is_many_discard = re.findall(r'_P\d{3}', working_doc_name)
+            chk_discard = sqlmng.conx_read(cursor, QUERY_CHK_DISCARD_CONSEGNE, [re.sub(r'(_P\d{3}){2,}', is_many_discard[0], working_doc_name) if len(is_many_discard) > 1 else working_doc_name]).fetchone()
 
             # controllo se esiste record di scarto
             if chk_discard:
                 if None not in chk_discard:
                     # controllo se è un duplicato
                     chk_dup = sqlmng.conx_read(cursor, QUERY_CHK_DUPLICATE, (
-                        doc_info['sorgente'],
-                        doc_info['pagina'],
-                        doc_info['numero_documento'],
-                        doc_info['genere_documento'],
-                        doc_info['data_documento'].year
+                        working_doc_name,
+                        working_page,
+                        chk_discard.numero_documento,
+                        chk_discard.genere_documento,
+                        chk_discard.data_documento.year
                     )).fetchone()[0]
 
                     if chk_dup:
