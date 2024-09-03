@@ -77,22 +77,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---DROP TRIGGER IF EXISTS discard_sync_stato_trg ON vanaheim.messaggi;
+-- DROP TRIGGER IF EXISTS discard_sync_stato_trg ON vanaheim.messaggi;
 CREATE TRIGGER discard_sync_stato_trg
 AFTER UPDATE OF stato ON vanaheim.messaggi
 FOR EACH ROW
 WHEN (NEW.genere = 'DISCARD')
 EXECUTE FUNCTION vanaheim.discard_sync_stato();
 
---REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA vanaheim FROM vanaheim;
---REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA vanaheim FROM vanaheim;
---REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA vanaheim FROM vanaheim;
+-- REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA vanaheim FROM vanaheim;
+-- REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA vanaheim FROM vanaheim;
+-- REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA vanaheim FROM vanaheim;
 
---ALTER DEFAULT PRIVILEGES IN SCHEMA vanaheim REVOKE SELECT, INSERT, UPDATE ON TABLES FROM vanaheim;
---ALTER DEFAULT PRIVILEGES IN SCHEMA vanaheim REVOKE EXECUTE ON FUNCTIONS FROM vanaheim;
---ALTER DEFAULT PRIVILEGES IN SCHEMA vanaheim REVOKE USAGE, SELECT ON SEQUENCES FROM vanaheim;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA vanaheim REVOKE SELECT, INSERT, UPDATE ON TABLES FROM vanaheim;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA vanaheim REVOKE EXECUTE ON FUNCTIONS FROM vanaheim;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA vanaheim REVOKE USAGE, SELECT ON SEQUENCES FROM vanaheim;
 
---DROP USER vanaheim;
+-- DROP USER vanaheim;
 CREATE USER vanaheim WITH PASSWORD 'V4n4H3!m';
 GRANT USAGE ON SCHEMA vanaheim TO vanaheim;
 
@@ -138,7 +138,8 @@ SELECT id,
         STRPOS(testo, ' of doc ') - (STRPOS(testo, 'Page ') + LENGTH('Page '))
     )::INTEGER pagina
 FROM vanaheim.messaggi
-WHERE genere = 'DISCARD';
+WHERE genere = 'DISCARD'
+    AND stato IS TRUE;
 
 CREATE OR REPLACE VIEW vanaheim.messaggi_gap_vw AS
 SELECT id,
@@ -153,7 +154,8 @@ SELECT id,
         LENGTH(testo)
     )::INTEGER anno
 FROM vanaheim.messaggi
-WHERE genere = 'GAP';
+WHERE genere = 'GAP'
+    AND stato IS TRUE;
 
 CREATE OR REPLACE VIEW vanaheim.consegne_gap_vw AS
 WITH doc_nums AS (
