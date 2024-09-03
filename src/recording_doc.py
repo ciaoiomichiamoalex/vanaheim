@@ -190,12 +190,12 @@ def doc_scanner(working_doc: str, cursor: Cursor, recording_begin: datetime = da
         # estrazione sede_consegna
         search = re.search(PATTERN_SEDE_DX, text)
         if search:
-            doc_info['ragione_sociale'] = search.group(1).upper()
-            doc_info['sede_consegna'] = search.group(3).upper()
+            doc_info['ragione_sociale'] = search.group(1).upper().strip()
+            doc_info['sede_consegna'] = search.group(3).upper().strip()
         else:
             search = re.search(PATTERN_SEDE_SX, text)
-            doc_info['ragione_sociale'] = search.group(1).upper() if search else None
-            doc_info['sede_consegna'] = search.group(3).upper() if search else None
+            doc_info['ragione_sociale'] = search.group(1).upper().strip() if search else None
+            doc_info['sede_consegna'] = search.group(3).upper().strip() if search else None
 
             if not search:
                 logger.warning(f"discarding page {working_page} of {working_doc_name} for error on PATTERN_SEDE...")
