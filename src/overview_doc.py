@@ -87,24 +87,23 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
             ws.cell(row=row_num, column=col_num).font = Font(name=DEFAULT_FONT)
             ws.cell(row=row_num, column=col_num).number_format = FORMATS[type(col)] if col_num != 1 else FORMATS['number']
 
-    wsc = wb['cifre']
-    wsl = wb['litri']
-    wsc.cell(row=1, column=1).value = date.today().year
-    wsc.cell(row=1, column=1).font = Font(name=DEFAULT_FONT)
-    wsc.cell(row=1, column=1).number_format = FORMATS['number']
-    wsl.cell(row=1, column=1).value = date.today().year
-    wsl.cell(row=1, column=1).font = Font(name=DEFAULT_FONT)
-    wsl.cell(row=1, column=1).number_format = FORMATS['number']
+    sheets = [
+        wb['cifre'],
+        wb['litri'],
+        wb['cifre manuale'],
+        wb['litri manuale']
+    ]
 
-    for row_num, day in enumerate([d for d in Calendar().itermonthdates(anno, mese) if d.month == mese], start=3):
-        wsc.cell(row=row_num, column=1).value = day
-        wsc.cell(row=row_num, column=1).font = Font(name=DEFAULT_FONT)
-        wsc.cell(row=row_num, column=1).number_format = FORMATS[date]
+    for ws in sheets:
+        ws.cell(row=1, column=1).value = date.today().year
+        ws.cell(row=1, column=1).font = Font(name=DEFAULT_FONT)
+        ws.cell(row=1, column=1).number_format = FORMATS['number']
 
-        wsl.cell(row=row_num, column=1).value = day
-        wsl.cell(row=row_num, column=1).font = Font(name=DEFAULT_FONT)
-        wsl.cell(row=row_num, column=1).number_format = FORMATS[date]
-    # TODO: remove extra days (31/06, 30/02, ...) => openpyxl non aggiorna le formule
+        for row_num, day in enumerate([d for d in Calendar().itermonthdates(anno, mese) if d.month == mese], start=3):
+            ws.cell(row=row_num, column=1).value = day
+            ws.cell(row=row_num, column=1).font = Font(name=DEFAULT_FONT)
+            ws.cell(row=row_num, column=1).number_format = FORMATS[date]
+        # TODO: remove extra days (31/06, 30/02, ...) => openpyxl non aggiorna le formule
 
     logger.info('saving overview for %(data)s... [%(data)s.xlsx]' % {'data': f'{anno}_{mese:0>2}'})
     wb.save(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx')
