@@ -4,6 +4,7 @@ from openpyxl.styles import Alignment, Font
 from share import sqlmng
 from share.common import logger_ini
 import openpyxl
+import os
 
 PATH_PRJ = 'c:/source/vanaheim'
 PATH_LOG = f"{PATH_PRJ}/log/vanaheim_{date.today().strftime('%Y_%m_%d')}.log"
@@ -78,7 +79,7 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
         logger.warning(f'no record founded in {anno}/{mese:0>2}... skipping overview!')
         return
 
-    wb = openpyxl.load_workbook(f'{PATH_SCHEME}/consegne.xlsx')
+    wb = openpyxl.load_workbook(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx' if os.path.isfile(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx') else f'{PATH_SCHEME}/consegne.xlsx')
     ws = wb['consegne']
     for row_num, row in enumerate(consegne, start=2):
         for col_num, col in enumerate(row, start=1):
@@ -103,7 +104,7 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
         wsl.cell(row=row_num, column=1).value = day
         wsl.cell(row=row_num, column=1).font = Font(name=DEFAULT_FONT)
         wsl.cell(row=row_num, column=1).number_format = FORMATS[date]
-    # TODO: remove extra days (31/06, 30/02, ...)
+    # TODO: remove extra days (31/06, 30/02, ...) => openpyxl non aggiorna le formule
 
     logger.info('saving overview for %(data)s... [%(data)s.xlsx]' % {'data': f'{anno}_{mese:0>2}'})
     wb.save(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx')
