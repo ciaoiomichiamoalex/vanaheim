@@ -99,6 +99,13 @@ PATTERN_MESSAGE_GAPS = {
 
 
 def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime.now()) -> tuple[int, int]:
+    """Parse the information from pdf document and save on database.
+
+    :param str working_doc: Path to the pdf document.
+    :param Cursor cursor: The cursor to the database.
+    :param datetime job_start: The starting date of the process, defaults to now().
+    :return: A tuple containing the number of document page and number of discarded page.
+    """
     logger = logger_ini(PATH_LOG, 'recording_doc')
     doc = pypdfium2.PdfDocument(working_doc)
     page_numbers = len(doc)
@@ -245,6 +252,12 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
 
 
 def discard_doc(working_doc: str, working_page: int) -> str:
+    """Generate a new pdf document by extracting a single page from another pdf document.
+
+    :param str working_doc: Path to the source pdf document.
+    :param int working_page: Page number which must be extracted.
+    :return: The name of the new document.
+    """
     doc = pypdfium2.PdfDocument(working_doc)
     discard = pypdfium2.PdfDocument.new()
 
@@ -257,6 +270,11 @@ def discard_doc(working_doc: str, working_page: int) -> str:
 
 
 def check_targa(doc_targa: str) -> str:
+    """Check the plate similarity with the plates in ENUM_TARGA list, in order to get the correct plate.
+
+    :param str doc_targa: The starting plate.
+    :return: The plate most similar, or the starting plate if the similarity index is lower than 50%.
+    """
     logger = logger_ini(PATH_LOG, 'recording_doc')
     logger.info(f'checking similarity for {doc_targa}...')
 
