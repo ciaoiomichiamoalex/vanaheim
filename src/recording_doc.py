@@ -52,7 +52,8 @@ QUERY_INSERT_MESSAGGI = """
     INSERT INTO vanaheim.messaggi (
         genere,
         testo
-    ) VALUES (?, ?);
+    ) VALUES (?, ?)
+    RETURNING id;
 """
 QUERY_CHK_GAPS = """
     SELECT cg.numero, 
@@ -61,7 +62,7 @@ QUERY_CHK_GAPS = """
         LEFT JOIN vanaheim.messaggi_gap_vw mg 
             ON cg.numero = mg.numero_documento 
             AND cg.anno = mg.anno 
-    WHERE discarded IS FALSE
+    WHERE cg.discarded IS FALSE
         AND mg.numero_documento IS NULL
     ORDER BY cg.anno, cg.numero;
 """
@@ -69,7 +70,8 @@ QUERY_CHK_RECORD_GAP = """
     SELECT id
     FROM vanaheim.messaggi_gap_vw
     WHERE numero_documento = ?
-        AND anno = ?;
+        AND anno = ?
+        AND stato IS TRUE;
 """
 QUERY_UPDATE_MESSAGGI = """
     UPDATE vanaheim.messaggi
@@ -77,10 +79,39 @@ QUERY_UPDATE_MESSAGGI = """
     WHERE id = ?;
 """
 QUERY_OVERVIEW_DATE = """
-    SELECT DISTINCT EXTRACT(YEAR FROM data_documento)::INT anno, EXTRACT(MONTH FROM data_documento)::INT mese
+    SELECT DISTINCT EXTRACT(YEAR FROM data_documento)::INT anno, 
+        EXTRACT(MONTH FROM data_documento)::INT mese
     FROM vanaheim.consegne 
     WHERE data_registrazione::DATE = ?::DATE
     ORDER BY 1, 2;
+"""
+QUERY_INSERT_DISCARD_CONSEGNE = """
+    INSERT INTO vanaheim.discard_consegne (
+        numero_documento, 
+        genere_documento,
+        data_documento,
+        ragione_sociale, 
+        sede_consegna,
+        quantita,
+        data_consegna,
+        targa,
+        sorgente,
+        id_messaggio 
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+"""
+QUERY_CHK_DISCARD_CONSEGNE = """
+    SELECT numero_documento,
+        genere_documento,
+        data_documento,
+        ragione_sociale,
+        sede_consegna,
+        quantita,
+        data_consegna,
+        targa
+        id_messaggio 
+    FROM vanaheim.discard_consegne 
+    WHERE stato IS TRUE 
+        AND sorgente = ?;
 """
 
 ENUM_TARGA = [
@@ -113,7 +144,10 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
     logger = logger_ini(PATH_LOG, 'recording_doc')
     doc = pypdfium2.PdfDocument(working_doc)
     page_numbers = len(doc)
-    discarded_pages = 0
+    discarded_pages = {
+        'number': 0,
+        'is_discarded': False
+    }
 
     for working_page, page in enumerate(doc, start=1):
         logger.info(f'scanning on page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]}...')
@@ -121,24 +155,22 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
 
         doc_info = {}
         search = re.search(PATTERN_NUMERO_DATA, text)
-        if search:
-            doc_info['numero_documento'] = int(search.group(1).replace('.', ''))
-            doc_info['genere_documento'] = search.group(2).upper()
-            doc_info['data_documento'] = datetime.strptime(search.group(3)[6:] + '-' + search.group(3)[3:5] + '-' + search.group(3)[0:2], '%Y-%m-%d').date()
-        else:
-            discarded_pages += 1
-            discarded_doc = discard_doc(working_doc, working_page)
-            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_NUMERO_DATA... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
-                page=working_page,
-                doc=working_doc.replace('.recording', '').split('/')[-1],
-                pattern='PATTERN_NUMERO_DATA',
-                numero_documento=None,
-                genere_documento=None,
-                data_documento=None
-            ))) != 1:
-                logger.error('error on saving discard message record...')
-            continue
+        doc_info['numero_documento'] = int(search.group(1).replace('.', '')) if search else None
+        doc_info['genere_documento'] = search.group(2).upper() if search else None
+        doc_info['data_documento'] = datetime.strptime(search.group(3)[6:] + '-' + search.group(3)[3:5] + '-' + search.group(3)[0:2], '%Y-%m-%d').date() if search else None
+
+        if not search:
+            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_NUMERO_DATA...")
+            if not discarded_pages['is_discarded']:
+                discarded_pages['discard_message'] = (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+                    page=working_page,
+                    doc=working_doc.replace('.recording', '').split('/')[-1],
+                    pattern='PATTERN_NUMERO_DATA',
+                    numero_documento=None,
+                    genere_documento=None,
+                    data_documento=None
+                ))
+            discarded_pages['is_discarded'] = True
 
         search = re.search(PATTERN_SEDE_DX, text)
         if search:
@@ -146,41 +178,37 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             doc_info['sede_consegna'] = search.group(3).upper()
         else:
             search = re.search(PATTERN_SEDE_SX, text)
-            if search:
-                doc_info['ragione_sociale'] = search.group(1).upper()
-                doc_info['sede_consegna'] = search.group(3).upper()
-            else:
-                discarded_pages += 1
-                discarded_doc = discard_doc(working_doc, working_page)
-                logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_SEDE... [{discarded_doc.split('/')[-1]}]")
-                if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+            doc_info['ragione_sociale'] = search.group(1).upper() if search else None
+            doc_info['sede_consegna'] = search.group(3).upper() if search else None
+
+            if not search:
+                logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_SEDE...")
+                if not discarded_pages['is_discarded']:
+                    discarded_pages['discard_message'] = (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+                        page=working_page,
+                        doc=working_doc.replace('.recording', '').split('/')[-1],
+                        pattern='PATTERN_SEDE',
+                        numero_documento=doc_info['numero_documento'],
+                        genere_documento=doc_info['genere_documento'],
+                        data_documento=doc_info['data_documento']
+                    ))
+                discarded_pages['is_discarded'] = True
+
+        search = re.search(PATTERN_QUANTITA, text)
+        doc_info['quantita'] = int(search.group(3).replace('.', '')) if search else None
+
+        if not search:
+            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_QUANTITA...")
+            if not discarded_pages['is_discarded']:
+                discarded_pages['discard_message'] = (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
                     page=working_page,
                     doc=working_doc.replace('.recording', '').split('/')[-1],
-                    pattern='PATTERN_SEDE',
+                    pattern='PATTERN_QUANTITA',
                     numero_documento=doc_info['numero_documento'],
                     genere_documento=doc_info['genere_documento'],
                     data_documento=doc_info['data_documento']
-                ))) != 1:
-                    logger.error('error on saving discard message record...')
-                continue
-
-        search = re.search(PATTERN_QUANTITA, text)
-        if search:
-            doc_info['quantita'] = int(search.group(3).replace('.', ''))
-        else:
-            discarded_pages += 1
-            discarded_doc = discard_doc(working_doc, working_page)
-            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_QUANTITA... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
-                page=working_page,
-                doc=working_doc.replace('.recording', '').split('/')[-1],
-                pattern='PATTERN_QUANTITA',
-                numero_documento=doc_info['numero_documento'],
-                genere_documento=doc_info['genere_documento'],
-                data_documento=doc_info['data_documento']
-            ))) != 1:
-                logger.error('error on saving discard message record...')
-            continue
+                ))
+            discarded_pages['is_discarded'] = True
 
         doc_info['data_consegna'] = doc_info['data_documento']
 
@@ -196,18 +224,51 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             ))) != 1:
                 logger.error('error on saving similarity crash message record...')
         else:
-            discarded_pages += 1
-            discarded_doc = discard_doc(working_doc, working_page)
-            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_TARGA... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
-                page=working_page,
-                doc=working_doc.replace('.recording', '').split('/')[-1],
-                pattern='PATTERN_TARGA',
-                numero_documento=doc_info['numero_documento'],
-                genere_documento=doc_info['genere_documento'],
-                data_documento=doc_info['data_documento']
-            ))) != 1:
-                logger.error('error on saving discard message record...')
+            doc_info['targa'] = None
+            logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_TARGA...")
+            if not discarded_pages['is_discarded']:
+                discarded_pages['discard_message'] = (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+                    page=working_page,
+                    doc=working_doc.replace('.recording', '').split('/')[-1],
+                    pattern='PATTERN_TARGA',
+                    numero_documento=doc_info['numero_documento'],
+                    genere_documento=doc_info['genere_documento'],
+                    data_documento=doc_info['data_documento']
+                ))
+            discarded_pages['is_discarded'] = True
+
+        if discarded_pages['is_discarded']:
+            # TODO: check if already exist discard_consegne record
+            chk_discard = sqlmng.conx_read(cursor, QUERY_CHK_DISCARD_CONSEGNE, [re.sub(r'(_P\d{3}){2,}.pdf$', re.findall(r'_P\d{3}', working_doc.replace('.recording', '').split('/')[-1])[0], working_doc.replace('.recording', '').split('/')[-1])]).fetchone()
+
+            if chk_discard:
+                if None not in chk_discard:
+                    if sqlmng.conx_write(cursor, QUERY_INSERT_CONSEGNE, (
+                        *chk_discard[:-1],
+                        working_doc.replace('.recording', '').split('/')[-1],
+                        working_page,
+                        job_start
+                    )) != 1:
+                        discarded_doc = discard_doc(working_doc, working_page)
+                        logger.error(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on saving record... [{discarded_doc.split('/')[-1]}]")
+                    elif sqlmng.conx_write(cursor, QUERY_UPDATE_MESSAGGI, chk_discard.id_messaggio) != 1:
+                        logger.error(f'error on update message status... [message id: {chk_discard.id_messaggio}]')
+                else:
+                    logger.warning(f'found NULL cell on saving consegne from discard_consegne in doc {working_doc.replace('.recording', '').split('/')[-1]}... skipping record!')
+            else:
+                discarded_doc = discard_doc(working_doc, working_page)
+                discarded_pages['number'] += 1
+
+                if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, discarded_pages['discard_message']) != 1:
+                    logger.error('error on saving discard message record...')
+                else:
+                    doc_info['sorgente'] = discarded_doc
+                    doc_info['id_messaggio'] = cursor.fetchone()[0]
+
+                    if sqlmng.conx_write(cursor, QUERY_INSERT_DISCARD_CONSEGNE, [value for value in doc_info.values()]) != 1:
+                        logger.error(f'error on saving discard_consegne record... [message id: {discarded_pages['id_messaggio']}]')
+
+            discarded_pages['is_discarded'] = False
             continue
 
         doc_info['sorgente'] = working_doc.replace('.recording', '').split('/')[-1]
@@ -259,7 +320,7 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             logger.error(f'error on update message status... [message id: {chk_gap}]')
 
     doc.close()
-    return page_numbers, discarded_pages
+    return page_numbers, discarded_pages['number']
 
 
 def discard_doc(working_doc: str, working_page: int) -> str:
