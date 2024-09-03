@@ -26,6 +26,11 @@ QUERY_OVERVIEW_DATA = """
 
 
 def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) -> None:
+    """Generate the overview excel by taking data from the database.
+
+    :param int anno: The desired year for the overview.
+    :param int mese: The desired month for the overview.
+    """
     logger = logger_ini(PATH_LOG, 'overview_doc')
     cursor = sqlmng.conx_ini()
 
@@ -76,7 +81,7 @@ def overview_gnr(anno: int = date.today().year, mese: int = date.today().month) 
         wsl.cell(row=row_num, column=1).font = Font(name='Arial')
         wsl.cell(row=row_num, column=1).number_format = 'dd/mm'
 
-    logger.info(f'saving overview for {anno}/{mese:0>2}...')
+    logger.info(f'saving overview for {anno}/{mese:0>2}... [{PATH_RES}/{anno}_{mese:0>2}.xlsx]')
     wb.save(f'{PATH_RES}/{anno}_{mese:0>2}.xlsx')
 
 
