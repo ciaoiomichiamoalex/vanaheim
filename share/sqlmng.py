@@ -6,6 +6,12 @@ PATH_CFG = f'{PATH_PRJ}/config/sqlmng.json'
 
 
 def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Cursor:
+    """Read from config/sqlmng.json the database configuration and start the connection.
+
+    :param str conn_name: Refers to the database configuration name in sqlmng.json, defaults to 'main'.
+    :param bool save_changes: Enables or disables the auto-commit, defaults to False.
+    :return: A new cursor.
+    """
     config = decode_json(PATH_CFG, 'name', conn_name)
     if not config:
         raise ValueError(f'conx_ini: no config {conn_name} founded!')
@@ -23,8 +29,22 @@ def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Curs
 
 
 def conx_read(cursor: pyodbc.Cursor, query: str, args: list | set | tuple = None) -> pyodbc.Cursor:
+    """Execute a DQL query on the database (SELECT).
+
+    :param Cursor cursor: The cursor achieved from conx_ini() calling.
+    :param str query: Query string to be executed.
+    :param list or set or tuple args: The parameters list of the query string, defaults to None.
+    :return: The cursor with values.
+    """
     return cursor.execute(query, args) if args else cursor.execute(query)
 
 
 def conx_write(cursor: pyodbc.Cursor, query: str, args: list | set | tuple = None) -> int:
+    """Execute a DDL or DML query on the database (INSERT, UPDATE, DELETE, CREATE, ...).
+
+    :param Cursor cursor: The cursor achieved from conx_ini() calling.
+    :param str query: Query string to be executed.
+    :param list or set or tuple args: The parameters list of the query string, defaults to None.
+    :return: The number of affected rows.
+    """
     return cursor.execute(query, args).rowcount if args else cursor.execute(query).rowcount
