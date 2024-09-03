@@ -1,3 +1,4 @@
+-- DROP SCHEMA vanaheim CASCADE;
 CREATE SCHEMA vanaheim;
 
 CREATE TABLE vanaheim.consegne (
@@ -13,10 +14,14 @@ CREATE TABLE vanaheim.consegne (
     sorgente VARCHAR(255),
     pagina INTEGER,
     data_registrazione TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT consegne_id_pk PRIMARY KEY (id),
-    CONSTRAINT consegne_numero_documento_chk CHECK (numero_documento > 0),
-    CONSTRAINT consegne_quantita_chk CHECK (quantita > 0),
-    CONSTRAINT consegne_pagina_chk CHECK (pagina > 0)
+    CONSTRAINT consegne_id_pk
+        PRIMARY KEY (id),
+    CONSTRAINT consegne_numero_documento_chk
+        CHECK (numero_documento > 0),
+    CONSTRAINT consegne_quantita_chk
+        CHECK (quantita > 0),
+    CONSTRAINT consegne_pagina_chk
+        CHECK (pagina > 0)
 );
 
 CREATE INDEX consegne_ragione_sociale_idx ON vanaheim.consegne (ragione_sociale);
@@ -28,13 +33,57 @@ CREATE TABLE vanaheim.messaggi (
     testo VARCHAR(255) NOT NULL,
     data_messaggio TIMESTAMP NOT NULL DEFAULT NOW(),
     stato BOOLEAN NOT NULL DEFAULT TRUE,
-    CONSTRAINT messaggi_id_pk PRIMARY KEY (id)
+    CONSTRAINT messaggi_id_pk
+        PRIMARY KEY (id)
 );
 
 CREATE INDEX messaggi_testo_idx ON vanaheim.messaggi (testo);
 
+CREATE TABLE vanaheim.discard_consegne (
+    id INTEGER GENERATED ALWAYS AS IDENTITY,
+    messaggio_id INTEGER NOT NULL,
+    numero_documento INTEGER,
+    genere_documento CHAR(2),
+    data_documento DATE,
+    ragione_sociale VARCHAR(255),
+    sede_consegna VARCHAR(255),
+    quantita INTEGER,
+    data_consegna DATE,
+    targa CHAR(7),
+    stato BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT discard_consegne_id_pk
+        PRIMARY KEY (id),
+    CONSTRAINT discard_consegne_messaggio_id_fk
+        FOREIGN KEY (messaggio_id)
+        REFERENCES vanaheim.messaggi (id),
+    CONSTRAINT discard_consegne_numero_documento_chk
+        CHECK (numero_documento > 0),
+    CONSTRAINT discard_consegne_quantita_chk
+        CHECK (quantita > 0)
+);
+
+CREATE INDEX discard_consegne_ragione_sociale_idx ON vanaheim.discard_consegne (ragione_sociale);
+CREATE INDEX discard_consegne_sede_consegna_idx ON vanaheim.discard_consegne (sede_consegna);
+
+CREATE OR REPLACE FUNCTION vanaheim.messaggi_sync_stato()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE vanaheim.discard_consegne
+    SET stato = NEW.stato
+    WHERE messaggio_id = NEW.id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER messaggi_sync_stato_trg
+AFTER UPDATE OF stato ON vanaheim.messaggi
+FOR EACH ROW
+EXECUTE FUNCTION vanaheim.messaggi_sync_stato();
+
 CREATE OR REPLACE VIEW vanaheim.messaggi_discard_vw AS
-SELECT NULLIF(SUBSTRING(
+SELECT id,
+    NULLIF(SUBSTRING(
         testo,
         STRPOS(testo, '[numero: ') + LENGTH('[numero: '),
         STRPOS(testo, ', genere: ') - (STRPOS(testo, '[numero: ') + LENGTH('[numero: '))
@@ -84,7 +133,8 @@ WHERE genere = 'GAP';
 
 CREATE OR REPLACE VIEW vanaheim.consegne_gap_vw AS
 WITH doc_nums AS (
-    SELECT dn.anno, s.numero
+    SELECT dn.anno,
+        s.numero
     FROM (
         SELECT EXTRACT(YEAR FROM data_documento) anno,
             MIN(numero_documento) min_num,
@@ -96,6 +146,14 @@ WITH doc_nums AS (
 )
 SELECT d.numero,
     d.anno,
+    (
+        SELECT DISTINCT EXTRACT(MONTH FROM data_documento) mese
+        FROM vanaheim.consegne
+        WHERE numero_documento < d.numero
+            AND EXTRACT(YEAR FROM data_documento) = d.anno
+        ORDER BY 1 DESC
+        LIMIT 1
+    ) mese,
     CASE
         WHEN m.numero_documento IS NOT NULL THEN TRUE
         ELSE FALSE
@@ -107,4 +165,5 @@ FROM doc_nums d
     LEFT JOIN vanaheim.messaggi_discard_vw m
         ON d.numero = m.numero_documento
         AND d.anno = EXTRACT(YEAR FROM m.data_documento)
-WHERE c.numero_documento IS NULL;
+WHERE c.numero_documento IS NULL
+ORDER BY d.anno, d.numero;
