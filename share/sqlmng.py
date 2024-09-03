@@ -22,9 +22,9 @@ def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> pyodbc.Curs
     return conx.cursor()
 
 
-def conx_read(cursor: pyodbc.Cursor, query: str, args: dict | list | set | tuple = None) -> pyodbc.Cursor:
+def conx_read(cursor: pyodbc.Cursor, query: str, args: list | set | tuple = None) -> pyodbc.Cursor:
     return cursor.execute(*(query, args) if args else query)
 
 
-def conx_write(cursor: pyodbc.Cursor, query: str, args: dict | list | set | tuple = None) -> int:
+def conx_write(cursor: pyodbc.Cursor, query: str, args: list | set | tuple = None) -> int:
     return cursor.execute(*(query, args) if args else query).rowcount
