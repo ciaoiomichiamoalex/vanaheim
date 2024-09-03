@@ -2,15 +2,15 @@ import json
 import logging
 
 
-def decode_json(json_fin: str, key: str, value: str) -> list | None:
+def decode_json(fin: str, key: str, value: str) -> list | None:
     """Read a json file and return the objects which verify the condition {key: value}.
 
-    :param str json_fin: Path to the json file.
+    :param str fin: Path to the json file.
     :param str key: The key name to be verified.
     :param str value: The value to look for.
     :return: A list of matching objects in the file.
     """
-    with open(json_fin, 'r') as jin:
+    with open(fin, 'r') as jin:
         res = list(json.load(jin))
 
     res = [obj for obj in res if obj[key] == value]
