@@ -48,3 +48,12 @@ def conx_write(cursor: pyodbc.Cursor, query: str, args: list | set | tuple = Non
     :return: The number of affected rows.
     """
     return cursor.execute(query, args).rowcount if args else cursor.execute(query).rowcount
+
+
+def column_names(cursor: pyodbc.Cursor) -> list[str] | None:
+    """Get the list of column names.
+
+    :param cursor: The cursor to the database.
+    :return: A list of column names or None if there isn't columns.
+    """
+    return [column[0] for column in cursor.description]
