@@ -41,7 +41,7 @@ CREATE INDEX messaggi_testo_idx ON vanaheim.messaggi (testo);
 
 CREATE TABLE vanaheim.discard_consegne (
     id INTEGER GENERATED ALWAYS AS IDENTITY,
-    messaggio_id INTEGER NOT NULL,
+    id_messaggio INTEGER NOT NULL,
     numero_documento INTEGER,
     genere_documento CHAR(2),
     data_documento DATE,
@@ -50,11 +50,12 @@ CREATE TABLE vanaheim.discard_consegne (
     quantita INTEGER,
     data_consegna DATE,
     targa CHAR(7),
+    sorgente VARCHAR(255) NOT NULL,
     stato BOOLEAN NOT NULL DEFAULT TRUE,
     CONSTRAINT discard_consegne_id_pk
         PRIMARY KEY (id),
-    CONSTRAINT discard_consegne_messaggio_id_fk
-        FOREIGN KEY (messaggio_id)
+    CONSTRAINT discard_consegne_id_messaggio_fk
+        FOREIGN KEY (id_messaggio)
         REFERENCES vanaheim.messaggi (id),
     CONSTRAINT discard_consegne_numero_documento_chk
         CHECK (numero_documento > 0),
@@ -70,7 +71,7 @@ RETURNS TRIGGER AS $$
 BEGIN
     UPDATE vanaheim.discard_consegne
     SET stato = NEW.stato
-    WHERE messaggio_id = NEW.id;
+    WHERE id_messaggio = NEW.id;
 
     RETURN NEW;
 END;
