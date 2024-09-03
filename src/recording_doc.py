@@ -94,7 +94,7 @@ PATTERN_MESSAGE_DISCARD = {
 }
 PATTERN_MESSAGE_GAPS = {
     'genere': 'GAP',
-    'testo': 'Finded gap for doc number {numero_documento} of year {anno}'
+    'testo': 'Found gap for doc number {numero_documento} of year {anno}'
 }
 
 
@@ -118,14 +118,14 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
             logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_NUMERO_DATA... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, [PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
                 page=working_page,
                 doc=working_doc.replace('.recording', '').split('/')[-1],
                 pattern='PATTERN_NUMERO_DATA',
                 numero_documento=None,
                 genere_documento=None,
                 data_documento=None
-            )]) != 1:
+            ))) != 1:
                 logger.error('error on saving discard message record...')
             continue
 
@@ -142,17 +142,16 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
                 discarded_pages += 1
                 discarded_doc = discard_doc(working_doc, working_page)
                 logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_SEDE... [{discarded_doc.split('/')[-1]}]")
-                if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, [PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+                if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
                     page=working_page,
                     doc=working_doc.replace('.recording', '').split('/')[-1],
                     pattern='PATTERN_SEDE',
                     numero_documento=doc_info['numero_documento'],
                     genere_documento=doc_info['genere_documento'],
                     data_documento=doc_info['data_documento']
-                )]) != 1:
+                ))) != 1:
                     logger.error('error on saving discard message record...')
                 continue
-        # TODO: check sede_consegna in DB comuni
 
         search = re.search(PATTERN_QUANTITA, text)
         if search:
@@ -161,14 +160,14 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
             logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_QUANTITA... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, [PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
                 page=working_page,
                 doc=working_doc.replace('.recording', '').split('/')[-1],
                 pattern='PATTERN_QUANTITA',
                 numero_documento=doc_info['numero_documento'],
                 genere_documento=doc_info['genere_documento'],
                 data_documento=doc_info['data_documento']
-            )]) != 1:
+            ))) != 1:
                 logger.error('error on saving discard message record...')
             continue
 
@@ -182,14 +181,14 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
             logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on PATTERN_TARGA... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, [PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
                 page=working_page,
                 doc=working_doc.replace('.recording', '').split('/')[-1],
                 pattern='PATTERN_TARGA',
                 numero_documento=doc_info['numero_documento'],
                 genere_documento=doc_info['genere_documento'],
                 data_documento=doc_info['data_documento']
-            )]) != 1:
+            ))) != 1:
                 logger.error('error on saving discard message record...')
             continue
 
@@ -210,28 +209,28 @@ def doc_scanner(working_doc: str, cursor: Cursor, job_start: datetime = datetime
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
             logger.warning(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} because already recorded... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, [PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
                 page=working_page,
                 doc=working_doc.replace('.recording', '').split('/')[-1],
                 pattern='QUERY_CHK_DUPLICATE',
                 numero_documento=doc_info['numero_documento'],
                 genere_documento=doc_info['genere_documento'],
                 data_documento=doc_info['data_documento']
-            )]) != 1:
+            ))) != 1:
                 logger.error('error on saving discard message record...')
             continue
         elif sqlmng.conx_write(cursor, QUERY_INSERT_CONSEGNE, [value for value in doc_info.values()]) != 1:
             discarded_pages += 1
             discarded_doc = discard_doc(working_doc, working_page)
             logger.error(f"discarding page {working_page} of {working_doc.replace('.recording', '').split('/')[-1]} for error on saving record... [{discarded_doc.split('/')[-1]}]")
-            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, [PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
+            if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_DISCARD['genere'], PATTERN_MESSAGE_DISCARD['testo'].format(
                 page=working_page,
                 doc=working_doc.replace('.recording', '').split('/')[-1],
                 pattern='QUERY_INSERT_CONSEGNE',
                 numero_documento=doc_info['numero_documento'],
                 genere_documento=doc_info['genere_documento'],
                 data_documento=doc_info['data_documento']
-            )]) != 1:
+            ))) != 1:
                 logger.error('error on saving discard message record...')
 
         chk_gap = sqlmng.conx_read(cursor, QUERY_CHK_RECORD_GAP, (
@@ -292,13 +291,13 @@ if __name__ == '__main__':
 
     gaps = sqlmng.conx_read(cursor, QUERY_CHK_GAPS).fetchall()
     for row in gaps:
-        if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI,[PATTERN_MESSAGE_GAPS['genere'], PATTERN_MESSAGE_GAPS['testo'].format(
+        if sqlmng.conx_write(cursor, QUERY_INSERT_MESSAGGI, (PATTERN_MESSAGE_GAPS['genere'], PATTERN_MESSAGE_GAPS['testo'].format(
             numero_documento=row.numero,
             anno=row.anno
-        )]) != 1:
+        ))) != 1:
             logger.error('error on saving gap message record...')
 
-    overviews = sqlmng.conx_read(cursor, QUERY_OVERVIEW_DATE, job_start).fetchall()
+    overviews = sqlmng.conx_read(cursor, QUERY_OVERVIEW_DATE, [job_start]).fetchall()
     for row in overviews:
         overview_gnr(row.anno, row.mese)
 
