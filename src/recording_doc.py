@@ -79,8 +79,8 @@ QUERY_UPDATE_MESSAGGI = """
     WHERE id = ?;
 """
 QUERY_OVERVIEW_DATE = """
-    SELECT DISTINCT EXTRACT(YEAR FROM data_documento) anno, 
-        EXTRACT(MONTH FROM data_documento) mese
+    SELECT DISTINCT EXTRACT(YEAR FROM data_documento)::INT anno, 
+        EXTRACT(MONTH FROM data_documento)::INT mese
     FROM vanaheim.consegne 
     WHERE data_registrazione = ?
     ORDER BY 1, 2;
@@ -107,7 +107,7 @@ QUERY_CHK_DISCARD_CONSEGNE = """
         sede_consegna,
         quantita,
         data_consegna,
-        targa
+        targa,
         id_messaggio 
     FROM vanaheim.discard_consegne 
     WHERE stato IS TRUE 
