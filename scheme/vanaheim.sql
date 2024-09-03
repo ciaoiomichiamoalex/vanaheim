@@ -66,7 +66,7 @@ CREATE TABLE vanaheim.discard_consegne (
 CREATE INDEX discard_consegne_ragione_sociale_idx ON vanaheim.discard_consegne (ragione_sociale);
 CREATE INDEX discard_consegne_sede_consegna_idx ON vanaheim.discard_consegne (sede_consegna);
 
-CREATE OR REPLACE FUNCTION vanaheim.messaggi_sync_stato()
+CREATE OR REPLACE FUNCTION vanaheim.discard_sync_stato()
 RETURNS TRIGGER AS $$
 BEGIN
     UPDATE vanaheim.discard_consegne
@@ -77,10 +77,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER messaggi_sync_stato_trg
+--DROP TRIGGER IF EXISTS discard_sync_stato_trg ON vanaheim.messaggi;
+CREATE TRIGGER discard_sync_stato_trg
 AFTER UPDATE OF stato ON vanaheim.messaggi
 FOR EACH ROW
-EXECUTE FUNCTION vanaheim.messaggi_sync_stato();
+WHEN (NEW.genere = 'DISCARD')
+EXECUTE FUNCTION vanaheim.discard_sync_stato();
+
+CREATE USER vanaheim WITH PASSWORD 'V4n4H3!m';
+GRANT USAGE ON SCHEMA vanaheim TO vanaheim;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA vanaheim TO vanaheim;
+ALTER DEFAULT PRIVILEGES IN SCHEMA vanaheim GRANT SELECT, INSERT, UPDATE ON TABLES TO vanaheim;
 
 CREATE OR REPLACE VIEW vanaheim.messaggi_discard_vw AS
 SELECT id,
