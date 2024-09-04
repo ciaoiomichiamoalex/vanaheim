@@ -6,6 +6,8 @@ from share.common import logger_ini
 import openpyxl
 import os
 
+__version__ = '2.2.3'
+
 PATH_PRJ = 'c:/source/vanaheim'
 PATH_LOG = f"{PATH_PRJ}/log/vanaheim_{date.today().strftime('%Y_%m_%d')}.log"
 PATH_RES = f'{PATH_PRJ}/res'
