@@ -8,6 +8,8 @@ import os
 import pypdfium2
 import re
 
+__version__ = '4.1.8'
+
 PATH_PRJ = 'c:/source/vanaheim'
 PATH_LOG = f"{PATH_PRJ}/log/vanaheim_{date.today().strftime('%Y_%m_%d')}.log"
 PATH_WORKING_DIR = f'{PATH_PRJ}/DDTs'
