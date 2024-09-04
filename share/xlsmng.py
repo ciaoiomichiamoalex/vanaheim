@@ -2,6 +2,8 @@ from openpyxl.styles import Font
 import datetime
 import openpyxl
 
+__version__ = '1.0.3'
+
 DEFAULT_FONT = 'Aptos Narrow'
 FORMATS = {
     type(None): 'General',
