@@ -1,6 +1,8 @@
 import json
 import logging
 
+__version__ = '1.2.3'
+
 
 def decode_json(fin: str, key: str, value: str) -> list | None:
     """Read a json file and return the objects which verify the condition {key: value}.
