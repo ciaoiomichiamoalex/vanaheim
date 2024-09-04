@@ -1,6 +1,8 @@
 from share.common import decode_json
 import pyodbc
 
+__version__ = '1.3.1'
+
 PATH_PRJ = 'c:/source/vanaheim'
 PATH_CFG = f'{PATH_PRJ}/config/sqlmng.json'
 
@@ -14,7 +16,7 @@ def conx_ini(conn_name: str = 'main', save_changes: bool = False) -> tuple[pyodb
     """
     config = decode_json(PATH_CFG, 'name', conn_name)
     if not config:
-        raise ValueError(f'conx_ini: no config {conn_name} found!')
+        raise ValueError(f'conx_ini: no config <{conn_name}> found!')
 
     conx = pyodbc.connect(
         driver=f"{{{config[0]['driver']}}}",
@@ -50,10 +52,10 @@ def conx_write(cursor: pyodbc.Cursor, query: str, args: list | set | tuple = Non
     return cursor.execute(query, args).rowcount if args else cursor.execute(query).rowcount
 
 
-def column_names(cursor: pyodbc.Cursor) -> list[str] | None:
+def conx_header(cursor: pyodbc.Cursor) -> list[str] | None:
     """Get the list of column names.
 
-    :param Cursor cursor: The cursor to the database.
+    :param Cursor cursor: The cursor to the database who executed query.
     :return: A list of column names or None if there isn't columns.
     """
     return [column[0] for column in cursor.description]
