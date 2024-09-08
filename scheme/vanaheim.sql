@@ -11,6 +11,7 @@ CREATE TABLE vanaheim.consegne (
     quantita INTEGER NOT NULL,
     data_consegna DATE NOT NULL,
     targa CHAR(7) NOT NULL,
+    autista VARCHAR(255),
     sorgente VARCHAR(255),
     pagina INTEGER,
     data_registrazione TIMESTAMP NOT NULL DEFAULT NOW(),
