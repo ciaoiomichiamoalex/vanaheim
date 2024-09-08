@@ -8,7 +8,7 @@ import os
 import pypdfium2
 import re
 
-__version__ = '4.1.8'
+__version__ = '4.1.9'
 
 PATH_PRJ = 'c:/source/vanaheim'
 PATH_LOG = f"{PATH_PRJ}/log/vanaheim_{date.today().strftime('%Y_%m_%d')}.log"
@@ -18,8 +18,8 @@ PATH_RECORDED_DIR = f'{PATH_WORKING_DIR}/recorded'
 
 PATTERN_WORKING_DOC = r'^\d{4}_\d{2}_DDT_\d{4}_\d{4}(_P\d{3})*\.pdf$'
 PATTERN_NUMERO_DATA = r'Num\. D\.D\.T\. ([\d\.]+)\/(\w{2}) Data D\.D\.T\. (\d{2}\/\d{2}\/\d{4}) Pag'
-PATTERN_SEDE_SX = r"Luogo di partenza: .+\r\n([\w\s\.\&\-']+)\r\n(\d{5}) ([\w\s']+) \(?(\w{2})\)?\r\n"
-PATTERN_SEDE_DX = r"Luogo di consegna\r\n([\w\s\.\&\-']+)\r\n.+\r\n(\d{0,5}) ?([\w\s']+) \(?(\w{2})\)?\r\n"
+PATTERN_SEDE_SX = r"Luogo di partenza: .+\r\n([\w\s\.\&\-'\/]+)\r\n(\d{5}) ([\w\s'\-]+) \(?(\w{2})\)?\r\n"
+PATTERN_SEDE_DX = r"Luogo di consegna\r\n([\w\s\.\&\-'\/]+)\r\n.+\r\n(\d{0,5}) ?([\w\s'\-]+) \(?(\w{2})\)?\r\n"
 PATTERN_QUANTITA = r'(Quantità Prezzo\r\n.+)? (L|KG) ([\d\.]+),000\s'
 PATTERN_TARGA = r'Peso soggetto accisa\r\n([\w\d]{7})\r\n'
 
@@ -194,6 +194,8 @@ def doc_scanner(working_doc: str, cursor: Cursor, recording_begin: datetime = da
         if search:
             doc_info['ragione_sociale'] = search.group(1).upper().strip()
             doc_info['sede_consegna'] = search.group(3).upper().strip()
+
+            logger.warning(f"error on PATTERN_SEDE_DX on page {working_page} of {working_doc_name}... moving on PATTERN_SEDE_SX!")
         else:
             search = re.search(PATTERN_SEDE_SX, text)
             doc_info['ragione_sociale'] = search.group(1).upper().strip() if search else None
