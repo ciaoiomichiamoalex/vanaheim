@@ -51,6 +51,7 @@ CREATE TABLE vanaheim.discard_consegne (
     quantita INTEGER,
     data_consegna DATE,
     targa CHAR(7),
+    autista VARCHAR(255),
     sorgente VARCHAR(255) NOT NULL,
     stato BOOLEAN NOT NULL DEFAULT TRUE,
     CONSTRAINT discard_consegne_id_pk
