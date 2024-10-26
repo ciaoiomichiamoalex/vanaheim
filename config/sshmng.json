@@ -1,0 +1,11 @@
+[
+  {
+    "name": "main",
+    "server": "sftp.example.com",
+    "port": "22",
+    "username": "username",
+    "password": "password",
+    "host_keys": null,
+    "private_key": null
+  }
+]
